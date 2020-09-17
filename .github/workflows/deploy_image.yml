@@ -1,0 +1,56 @@
+name: CI
+on:  
+  [push] 
+     
+# CONFIGURATION
+# Set up the following secrets in your repository:
+#
+#   CLUST_NAME
+#   RESOURCE_GROUP
+env:
+   CLUST_NAME: clust           #set this to your kubernetes cluster name 
+   RESOURCE_GROUP: test    #set this to your resource group name
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+        
+    #- name: Check tag filter 
+     # run: |
+      #  if [ "$repo_version" != "$filter" ]; then echo "incorrect tag filter supplied"; exit 1 ; fi;
+          
+    - name: Set Context for Azure Kubernetes Cluster using azure/aks-set-context@v1 action
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}' 
+        cluster-name: ${{ env.CLUST_NAME }}
+        resource-group: ${{ env.RESOURCE_GROUP }}
+    
+    - uses: Azure/k8s-create-secret@v1
+      with:
+        container-registry-url: myclustacr.azurecr.io
+        container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
+        container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+        secret-name: demo-k8s-secret
+
+    - uses: azure/k8s-bake@v1
+      with:
+        renderEngine: 'helm2'
+        helmChart: './charts/' 
+        overrideFiles: './charts/values.yaml'
+        overrides: |     
+          image.repository: myclust4c62
+          image.tag: 1
+        releaseName: test22
+      id: bake 
+
+    - uses: Azure/k8s-deploy@v1
+      with:
+        manifests: ${{ steps.bake.outputs.manifestsBundle }}
+        images: |
+          myclustacr.azurecr.io/myclust4c62:1
+        imagepullsecrets: |
+          demo-k8s-secret
