@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "clust-2ee5"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "clust-2ee5"
+  template:
+    metadata:
+      labels:
+        app: "clust-2ee5"
+    spec:
+      containers:
+        - name: "clust-2ee5"
+          image: "mycontainervivek.azurecr.io/clust2ee5"
+          ports:
+          - containerPort: 8080
